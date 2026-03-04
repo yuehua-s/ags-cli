@@ -33,6 +33,7 @@ var (
 	// login command flags
 	instanceLoginNoBrowser  bool
 	instanceLoginTTYDBinary string
+	instanceLoginUser       string
 )
 
 // instanceCreateCmd represents the instance create command
@@ -675,7 +676,7 @@ Examples:
 			}
 
 			// Start ttyd service
-			if err := webshellMgr.Start(ctx, instanceID, accessToken); err != nil {
+			if err := webshellMgr.Start(ctx, instanceID, accessToken, resolveUser(instanceLoginUser)); err != nil {
 				if strings.Contains(err.Error(), "port.*already in use") {
 					return fmt.Errorf("webshell port is already in use. Another webshell session might be running.\nPlease wait a moment and try again, or contact support if the issue persists")
 				}
@@ -865,6 +866,7 @@ func addInstanceCommand(parent *cobra.Command) {
 	}
 	loginCmd.Flags().BoolVar(&instanceLoginNoBrowser, "no-browser", false, "Don't open browser automatically")
 	loginCmd.Flags().StringVar(&instanceLoginTTYDBinary, "ttyd-binary", "", "Path to custom ttyd binary file to upload")
+	loginCmd.Flags().StringVar(&instanceLoginUser, "user", "", "User to run webshell as (default: \"user\")")
 	loginCmd.Flags().BoolVar(&instanceTime, "time", false, "Print elapsed time")
 	cmd.AddCommand(loginCmd)
 

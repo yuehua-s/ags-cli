@@ -36,6 +36,7 @@ ags fs <子命令> [选项]
 | `-t, --tool` | string | `code-interpreter-v1` | 临时实例使用的工具 |
 | `--keep-alive` | bool | `false` | 保持临时实例存活 |
 | `--time` | bool | `false` | 显示耗时 |
+| `--user` | string | `user` | 文件操作的用户身份 |
 
 ## list
 

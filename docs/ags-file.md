@@ -36,6 +36,7 @@ These options apply to all subcommands:
 | `-t, --tool` | string | `code-interpreter-v1` | Tool for temporary instance |
 | `--keep-alive` | bool | `false` | Keep temporary instance alive |
 | `--time` | bool | `false` | Print elapsed time |
+| `--user` | string | `user` | User for file operations |
 
 ## list
 

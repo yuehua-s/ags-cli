@@ -198,6 +198,7 @@ var (
 	instanceLoginFlags = []prompt.Suggest{
 		{Text: "--no-browser", Description: "Don't open browser automatically"},
 		{Text: "--ttyd-binary", Description: "Path to custom ttyd binary file to upload"},
+		{Text: "--user", Description: "User to run webshell as"},
 		{Text: "--time", Description: "Print elapsed time to stderr"},
 	}
 
@@ -295,6 +296,7 @@ var (
 		{Text: "--time", Description: "Print elapsed time"},
 		{Text: "--cwd", Description: "Working directory"},
 		{Text: "--env", Description: "Environment variables (KEY=VALUE)"},
+		{Text: "--user", Description: "User to run commands as"},
 	}
 
 	execSubcommands = []prompt.Suggest{
@@ -328,6 +330,7 @@ var (
 		{Text: "--keep-alive", Description: "Keep temporary instance alive"},
 		{Text: "--time", Description: "Print elapsed time"},
 		{Text: "--depth", Description: "Directory depth for list"},
+		{Text: "--user", Description: "User for file operations"},
 	}
 
 	globalFlags = []prompt.Suggest{
@@ -827,6 +830,7 @@ Shell Command Execution:
   exec -s "<command>"         Stream output in real-time
   exec --cwd <path>           Set working directory
   exec --env KEY=VALUE        Set environment variable
+  exec --user <user>          User to run commands as (default: "user")
   exec --time                 Print elapsed time to stderr
   exec ps                     List running processes
 
@@ -848,6 +852,7 @@ File Operations:
   Common flags:
     --instance <id>           Use existing instance
     --keep-alive              Keep temporary instance alive
+    --user <user>             User for file operations (default: "user")
     --time                    Print elapsed time
 
   Examples:

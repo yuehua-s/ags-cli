@@ -24,6 +24,7 @@ Execute shell commands in an isolated sandbox environment. Supports streaming ou
 | `--time` | bool | `false` | Print elapsed time |
 | `--cwd` | string | - | Working directory |
 | `--env` | string | - | Environment variables (KEY=VALUE, repeatable) |
+| `--user` | string | `user` | User to run commands as |
 
 ## Examples
 

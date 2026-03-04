@@ -11,6 +11,7 @@ import (
 	"github.com/TencentCloudAgentRuntime/ags-cli/internal/config"
 	"github.com/TencentCloudAgentRuntime/ags-cli/internal/output"
 	"github.com/TencentCloudAgentRuntime/ags-go-sdk/sandbox/code"
+	"github.com/TencentCloudAgentRuntime/ags-go-sdk/tool/filesystem"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +21,7 @@ var (
 	fileTool      string
 	fileKeepAlive bool
 	fileTime      bool
+	fileUser      string
 
 	// file list flags
 	fileListDepth int
@@ -62,6 +64,7 @@ Examples:
 	cmd.PersistentFlags().StringVar(&fileTool, "tool", "code-interpreter-v1", "Tool for temporary instance (alias for --tool-name)")
 	cmd.PersistentFlags().BoolVar(&fileKeepAlive, "keep-alive", false, "Keep temporary instance alive")
 	cmd.PersistentFlags().BoolVar(&fileTime, "time", false, "Print elapsed time")
+	cmd.PersistentFlags().StringVar(&fileUser, "user", "", "User for file operations (default: \"user\")")
 
 	// file list
 	listCmd := &cobra.Command{
@@ -184,8 +187,9 @@ func fileListCommand(cmd *cobra.Command, args []string) error {
 	defer cleanup()
 
 	path := args[0]
+	user := resolveUser(fileUser)
 	execStart := time.Now()
-	entries, err := sandbox.Files.List(ctx, path, nil)
+	entries, err := sandbox.Files.List(ctx, path, &filesystem.ListConfig{User: user})
 	if err != nil {
 		return fmt.Errorf("failed to list directory: %w", err)
 	}
@@ -265,7 +269,7 @@ func fileUploadCommand(cmd *cobra.Command, args []string) error {
 	defer cleanup()
 
 	execStart := time.Now()
-	info, err := sandbox.Files.Write(ctx, remotePath, file, nil)
+	info, err := sandbox.Files.Write(ctx, remotePath, file, &filesystem.WriteConfig{User: resolveUser(fileUser)})
 	if err != nil {
 		return fmt.Errorf("failed to upload file: %w", err)
 	}
@@ -322,7 +326,7 @@ func fileDownloadCommand(cmd *cobra.Command, args []string) error {
 	defer cleanup()
 
 	execStart := time.Now()
-	reader, err := sandbox.Files.Read(ctx, remotePath, nil)
+	reader, err := sandbox.Files.Read(ctx, remotePath, &filesystem.ReadConfig{User: resolveUser(fileUser)})
 	if err != nil {
 		return fmt.Errorf("failed to read remote file: %w", err)
 	}
@@ -389,7 +393,7 @@ func fileRemoveCommand(cmd *cobra.Command, args []string) error {
 
 	execStart := time.Now()
 	for _, path := range args {
-		if err := sandbox.Files.Remove(ctx, path, nil); err != nil {
+		if err := sandbox.Files.Remove(ctx, path, &filesystem.RemoveConfig{User: resolveUser(fileUser)}); err != nil {
 			output.PrintWarning(fmt.Sprintf("Failed to remove %s: %v", path, err))
 			failed = append(failed, path)
 		} else {
@@ -438,7 +442,7 @@ func fileMkdirCommand(cmd *cobra.Command, args []string) error {
 
 	path := args[0]
 	execStart := time.Now()
-	_, err = sandbox.Files.MakeDir(ctx, path, nil)
+	_, err = sandbox.Files.MakeDir(ctx, path, &filesystem.MakeDirConfig{User: resolveUser(fileUser)})
 	if err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
@@ -488,7 +492,7 @@ func fileStatCommand(cmd *cobra.Command, args []string) error {
 
 	path := args[0]
 	execStart := time.Now()
-	info, err := sandbox.Files.GetInfo(ctx, path, nil)
+	info, err := sandbox.Files.GetInfo(ctx, path, &filesystem.GetInfoConfig{User: resolveUser(fileUser)})
 	if err != nil {
 		return fmt.Errorf("failed to get file info: %w", err)
 	}
@@ -575,7 +579,7 @@ func fileCatCommand(cmd *cobra.Command, args []string) error {
 
 	path := args[0]
 	execStart := time.Now()
-	reader, err := sandbox.Files.Read(ctx, path, nil)
+	reader, err := sandbox.Files.Read(ctx, path, &filesystem.ReadConfig{User: resolveUser(fileUser)})
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}

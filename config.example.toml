@@ -23,3 +23,8 @@ region = "ap-guangzhou"
 #   - Control plane: ags.internal.tencentcloudapi.com
 #   - Data plane: internal.tencentags.com
 internal = false
+
+# Sandbox Configuration
+[sandbox]
+# Default user for data plane operations (default: "user")
+# default_user = "user"

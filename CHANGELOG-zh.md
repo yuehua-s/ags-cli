@@ -4,6 +4,10 @@
 
 ## [未发布]
 
+### 新增
+- 为 `exec`、`file` 和 `instance login` 命令添加 `--user` 参数，支持指定数据面操作的用户身份（默认值: "user"）
+- 在 config.toml 中添加 `sandbox.default_user` 配置项，支持全局设置默认用户
+
 ## [0.1.2] - 2026-02-11
 
 ### 变更

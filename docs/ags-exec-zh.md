@@ -24,6 +24,7 @@ ags x [选项] <命令>
 | `--time` | bool | `false` | 显示耗时 |
 | `--cwd` | string | - | 工作目录 |
 | `--env` | string | - | 环境变量（KEY=VALUE，可重复） |
+| `--user` | string | `user` | 运行命令的用户身份 |
 
 ## 示例
 

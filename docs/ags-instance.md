@@ -156,6 +156,7 @@ If the sandbox cannot download ttyd from GitHub due to network restrictions, you
 |------|------|---------|-------------|
 | `--no-browser` | bool | `false` | Don't open browser automatically |
 | `--ttyd-binary` | string | - | Path to custom ttyd binary file to upload |
+| `--user` | string | `user` | User to run webshell as |
 | `--time` | bool | `false` | Print elapsed time |
 
 ### Supported Instance Types

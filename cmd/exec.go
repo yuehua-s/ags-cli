@@ -23,6 +23,7 @@ var (
 	execStream    bool
 	execCwd       string
 	execEnv       []string
+	execUser      string
 )
 
 func init() {
@@ -69,6 +70,7 @@ Examples:
 	cmd.Flags().BoolVarP(&execStream, "stream", "s", false, "Stream output in real-time")
 	cmd.Flags().StringVar(&execCwd, "cwd", "", "Working directory")
 	cmd.Flags().StringArrayVar(&execEnv, "env", nil, "Environment variables (KEY=VALUE format)")
+	cmd.Flags().StringVar(&execUser, "user", "", "User to run commands as (default: \"user\")")
 
 	parent.AddCommand(cmd)
 
@@ -155,7 +157,7 @@ func execCommand(cmd *cobra.Command, args []string) error {
 
 	// Build process config
 	procConfig := &command.ProcessConfig{
-		User: "user",
+		User: resolveUser(execUser),
 		Envs: envs,
 	}
 	if execCwd != "" {

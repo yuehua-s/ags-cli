@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Add `--user` flag to `exec`, `file`, and `instance login` commands to specify the user identity for data plane operations (default: "user")
+- Add `sandbox.default_user` configuration option in config.toml for setting the default user globally
+
 ## [0.1.2] - 2026-02-11
 
 ### Changed

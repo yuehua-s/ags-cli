@@ -10,10 +10,11 @@ import (
 
 // Config represents the CLI configuration
 type Config struct {
-	Backend string      `mapstructure:"backend"`
-	Output  string      `mapstructure:"output"`
-	E2B     E2BConfig   `mapstructure:"e2b"`
-	Cloud   CloudConfig `mapstructure:"cloud"`
+	Backend string        `mapstructure:"backend"`
+	Output  string        `mapstructure:"output"`
+	E2B     E2BConfig     `mapstructure:"e2b"`
+	Cloud   CloudConfig   `mapstructure:"cloud"`
+	Sandbox SandboxConfig `mapstructure:"sandbox"`
 }
 
 // E2BConfig represents E2B API configuration
@@ -29,6 +30,11 @@ type CloudConfig struct {
 	SecretKey string `mapstructure:"secret_key"`
 	Region    string `mapstructure:"region"`
 	Internal  bool   `mapstructure:"internal"` // Use internal endpoints for both control plane and data plane
+}
+
+// SandboxConfig represents sandbox-level configuration
+type SandboxConfig struct {
+	DefaultUser string `mapstructure:"default_user"`
 }
 
 // ControlPlaneEndpoint returns the control plane API endpoint
@@ -96,6 +102,7 @@ func Init() error {
 	_ = viper.BindEnv("cloud.secret_key", "AGS_CLOUD_SECRET_KEY")
 	_ = viper.BindEnv("cloud.region", "AGS_CLOUD_REGION")
 	_ = viper.BindEnv("cloud.internal", "AGS_CLOUD_INTERNAL")
+	_ = viper.BindEnv("sandbox.default_user", "AGS_SANDBOX_DEFAULT_USER")
 
 	// Read config file (ignore if not found)
 	if err := viper.ReadInConfig(); err != nil {
@@ -194,6 +201,16 @@ func SetCloudRegion(region string) {
 // SetCloudInternal sets whether to use internal endpoints (for command line override)
 func SetCloudInternal(internal bool) {
 	Get().Cloud.Internal = internal
+}
+
+// GetSandboxUser returns the default sandbox user
+func GetSandboxUser() string {
+	return Get().Sandbox.DefaultUser
+}
+
+// SetSandboxUser sets the default sandbox user (for command line override)
+func SetSandboxUser(user string) {
+	Get().Sandbox.DefaultUser = user
 }
 
 // Validate validates the configuration

@@ -16,6 +16,18 @@ import (
 	"github.com/TencentCloudAgentRuntime/ags-cli/internal/token"
 )
 
+// resolveUser returns the effective sandbox user.
+// Priority: flag value > config default_user > "user".
+func resolveUser(flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	if cfgUser := config.GetSandboxUser(); cfgUser != "" {
+		return cfgUser
+	}
+	return "user"
+}
+
 // ConnectWithToken connects to a sandbox instance using a cached access token.
 // This function bypasses the control plane API and directly constructs data plane clients.
 //

@@ -35,7 +35,7 @@ type Manager interface {
 	UploadTTYD(ctx context.Context, instanceID string, ttydPath string) error
 
 	// Start starts ttyd service in the specified instance
-	Start(ctx context.Context, instanceID string, accessToken string) error
+	Start(ctx context.Context, instanceID string, accessToken string, user string) error
 
 	// Stop stops ttyd service in the specified instance
 	Stop(ctx context.Context, instanceID string) error
@@ -215,7 +215,7 @@ chmod +x /tmp/ttyd
 }
 
 // Start starts ttyd service in the specified instance using Commands.Start for background execution
-func (m *manager) Start(ctx context.Context, instanceID string, accessToken string) error {
+func (m *manager) Start(ctx context.Context, instanceID string, accessToken string, user string) error {
 	// Check if already running
 	running, err := m.IsRunning(ctx, instanceID)
 	if err != nil {
@@ -239,7 +239,7 @@ func (m *manager) Start(ctx context.Context, instanceID string, accessToken stri
 		ttydPort)
 
 	_, err = sandbox.Commands.Start(ctx, ttydCmd, &command.ProcessConfig{
-		User: "user",
+		User: user,
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to start ttyd: %w", err)
