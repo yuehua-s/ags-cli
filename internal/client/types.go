@@ -115,7 +115,7 @@ type Tool struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
 	Description   string            `json:"description"`
-	Type          string            `json:"type"`                   // code-interpreter, browser
+	Type          string            `json:"type"`                   // code-interpreter, browser, mobile, osworld, custom, swebench
 	NetworkMode   string            `json:"network_mode,omitempty"` // PUBLIC, VPC, SANDBOX, INTERNAL_SERVICE
 	VPCConfig     *VPCConfig        `json:"vpc_config,omitempty"`   // VPC configuration (only when NetworkMode=VPC)
 	Tags          map[string]string `json:"tags,omitempty"`
@@ -127,7 +127,7 @@ type Tool struct {
 // CreateToolOptions represents options for creating a tool
 type CreateToolOptions struct {
 	Name           string            // Tool name (required)
-	Type           string            // Tool type: code-interpreter or browser (required)
+	Type           string            // Tool type: code-interpreter, browser, mobile, osworld, custom, swebench (required)
 	Description    string            // Tool description (optional)
 	DefaultTimeout string            // Default timeout, e.g., "5m", "300s", "1h" (optional)
 	NetworkMode    string            // Network mode: PUBLIC, VPC, SANDBOX, INTERNAL_SERVICE (optional, default PUBLIC)
@@ -151,7 +151,7 @@ type ListToolsOptions struct {
 	Offset           int               // Pagination offset (ignored when ToolIDs specified)
 	Limit            int               // Pagination limit, default 20, max 100 (ignored when ToolIDs specified)
 	Status           string            // Filter by status: CREATING, ACTIVE, DELETING, FAILED
-	ToolType         string            // Filter by type: browser, code-interpreter, computer, mobile
+	ToolType         string            // Filter by type: code-interpreter, browser, mobile, osworld, custom, swebench
 	CreatedSince     string            // Relative time filter, e.g., "5s", "2m", "3h"
 	CreatedSinceTime string            // Absolute time filter (RFC3339), e.g., "2024-01-15T10:30:00Z"
 	Tags             map[string]string // Filter by tags (tag:<key>=<value>)

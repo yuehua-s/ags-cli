@@ -37,7 +37,7 @@ ags tool list [选项]
 |------|------|--------|------|
 | `--id` | string | - | 指定工具 ID（可重复） |
 | `--status` | string | - | 状态过滤：CREATING, ACTIVE, DELETING, FAILED |
-| `--type` | string | - | 类型过滤：code-interpreter, browser |
+| `--type` | string | - | 类型过滤：code-interpreter, browser, mobile, osworld, custom, swebench |
 | `--tag` | string | - | 标签过滤（key=value，可重复） |
 | `--created-since` | string | - | 相对时间过滤（如 1h, 24h） |
 | `--short` | bool | `false` | 仅显示 ID 和名称 |
@@ -94,7 +94,7 @@ ags tool create [选项]
 | 选项 | 类型 | 默认值 | 描述 |
 |------|------|--------|------|
 | `-n, --name` | string | - | 工具名称（必需） |
-| `-t, --type` | string | - | 工具类型（必需）：code-interpreter, browser |
+| `-t, --type` | string | - | 工具类型（必需）：code-interpreter, browser, mobile, osworld, custom, swebench |
 | `-d, --description` | string | - | 工具描述 |
 | `--timeout` | duration | - | 默认超时（如 5m, 1h） |
 | `--network` | string | - | 网络模式：PUBLIC |

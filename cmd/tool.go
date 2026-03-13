@@ -59,7 +59,7 @@ Options:
 
 Filter options (ignored when --id is specified):
   --status: CREATING, ACTIVE, DELETING, FAILED
-  --type: browser, code-interpreter, computer, mobile
+  --type: code-interpreter, browser, mobile, osworld, custom, swebench
   --created-since: Relative time, e.g., "5m", "1h", "24h"
   --created-since-time: Absolute time (RFC3339), e.g., "2024-01-15T10:30:00Z"
   --tag: Filter by tag (key=value format, can be specified multiple times)
@@ -364,6 +364,10 @@ func addToolCommand(parent *cobra.Command) {
 Tool types:
   - code-interpreter: Python code execution sandbox
   - browser: Browser automation sandbox
+  - mobile: Mobile device sandbox
+  - osworld: OS-level sandbox
+  - custom: Custom sandbox type
+  - swebench: SWE-Bench evaluation sandbox
 
 Network modes:
   - PUBLIC: Public network access (default)
@@ -397,8 +401,16 @@ Examples:
 			if toolCreateType == "" {
 				return fmt.Errorf("tool type is required (-t/--type)")
 			}
-			if toolCreateType != "code-interpreter" && toolCreateType != "browser" {
-				return fmt.Errorf("invalid tool type: %s (must be code-interpreter or browser)", toolCreateType)
+			validTypes := map[string]bool{
+				"code-interpreter": true,
+				"browser":          true,
+				"mobile":           true,
+				"osworld":          true,
+				"custom":           true,
+				"swebench":         true,
+			}
+			if !validTypes[toolCreateType] {
+				return fmt.Errorf("invalid tool type: %s (must be one of: code-interpreter, browser, mobile, osworld, custom, swebench)", toolCreateType)
 			}
 
 			// Validate network mode
@@ -542,7 +554,7 @@ Examples:
 		},
 	}
 	createCmd.Flags().StringVarP(&toolCreateName, "name", "n", "", "Tool name (required)")
-	createCmd.Flags().StringVarP(&toolCreateType, "type", "t", "", "Tool type: code-interpreter or browser (required)")
+	createCmd.Flags().StringVarP(&toolCreateType, "type", "t", "", "Tool type (required): code-interpreter, browser, mobile, osworld, custom, swebench")
 	createCmd.Flags().StringVarP(&toolCreateDescription, "description", "d", "", "Tool description")
 	createCmd.Flags().StringVar(&toolCreateTimeout, "timeout", "", "Default timeout (e.g., 5m, 300s, 1h)")
 	createCmd.Flags().StringVar(&toolCreateNetworkMode, "network", "", "Network mode: PUBLIC (default), VPC, SANDBOX, INTERNAL_SERVICE")
@@ -564,7 +576,7 @@ Examples:
 	}
 	listCmd.Flags().StringArrayVar(&toolListIDs, "id", nil, "Specific tool IDs to query (can be specified multiple times)")
 	listCmd.Flags().StringVar(&toolListStatus, "status", "", "Filter by status: CREATING, ACTIVE, DELETING, FAILED")
-	listCmd.Flags().StringVar(&toolListType, "type", "", "Filter by type: browser, code-interpreter, computer, mobile")
+	listCmd.Flags().StringVar(&toolListType, "type", "", "Filter by type: code-interpreter, browser, mobile, osworld, custom, swebench")
 	listCmd.Flags().StringVar(&toolListCreatedSince, "created-since", "", "Filter by relative time, e.g., 5m, 1h, 24h")
 	listCmd.Flags().StringVar(&toolListCreatedSinceTime, "created-since-time", "", "Filter by absolute time (RFC3339)")
 	listCmd.Flags().StringArrayVar(&toolListTags, "tag", nil, "Filter by tag (key=value, can be specified multiple times)")

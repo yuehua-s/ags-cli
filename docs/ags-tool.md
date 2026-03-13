@@ -37,7 +37,7 @@ ags tool list [flags]
 |------|------|---------|-------------|
 | `--id` | string | - | Specific tool IDs (repeatable) |
 | `--status` | string | - | Filter: CREATING, ACTIVE, DELETING, FAILED |
-| `--type` | string | - | Filter: code-interpreter, browser |
+| `--type` | string | - | Filter: code-interpreter, browser, mobile, osworld, custom, swebench |
 | `--tag` | string | - | Filter by tag (key=value, repeatable) |
 | `--created-since` | string | - | Filter by relative time (e.g., 1h, 24h) |
 | `--short` | bool | `false` | Show only ID and NAME |
@@ -94,7 +94,7 @@ ags tool create [flags]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `-n, --name` | string | - | Tool name (required) |
-| `-t, --type` | string | - | Tool type (required): code-interpreter, browser |
+| `-t, --type` | string | - | Tool type (required): code-interpreter, browser, mobile, osworld, custom, swebench |
 | `-d, --description` | string | - | Tool description |
 | `--timeout` | duration | - | Default timeout (e.g., 5m, 1h) |
 | `--network` | string | - | Network mode: PUBLIC |
