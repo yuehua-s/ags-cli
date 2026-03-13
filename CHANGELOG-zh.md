@@ -4,6 +4,9 @@
 
 ## [未发布]
 
+### 变更
+- 扩展支持的工具类型，从 `code-interpreter` 和 `browser` 扩展为同时支持 `mobile`、`osworld`、`custom`、`swebench`
+
 ## [0.2.0] - 2026-03-09
 
 ### 新增

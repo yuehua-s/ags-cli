@@ -163,6 +163,10 @@ If the sandbox cannot download ttyd from GitHub due to network restrictions, you
 
 - `code-interpreter` - Python/code execution environments
 - `browser` - Browser-based environments
+- `mobile` - Mobile device environments
+- `osworld` - OS-level environments
+- `custom` - Custom environments
+- `swebench` - SWE-Bench evaluation environments
 
 ### Examples
 
