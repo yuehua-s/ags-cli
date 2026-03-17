@@ -289,7 +289,7 @@ func TestProbeSuccess(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		// Read until close
 		for {
 			_, _, err := conn.ReadMessage()
@@ -432,7 +432,7 @@ func TestTunnelStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("should be able to connect to tunnel listener: %v", err)
 	}
-	conn.Close()
+	_ = conn.Close()
 
 	// Stop and verify listener is closed
 	tunnel.Stop()
