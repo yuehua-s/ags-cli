@@ -12,7 +12,7 @@ AGS CLI 是一个用于管理腾讯云智能体沙箱（AGS）的命令行工具
 - **Shell 命令执行**：在沙箱中运行 Shell 命令，支持流式输出
 - **文件操作**：在沙箱中上传、下载和管理文件
 - **双后端支持**：同时支持 E2B API 和腾讯云 API
-- **移动沙箱 ADB 连接**：通过 WebSocket 隧道安全访问远程 Android 沙箱
+- **手机沙箱 ADB 连接**：通过 WebSocket 隧道安全访问远程 Android 沙箱
 - **交互式 REPL**：内置交互模式，支持自动补全
 - **流式输出**：长时间运行代码的实时输出流
 
@@ -133,6 +133,49 @@ ags file upload local.txt /home/user/remote.txt
 ags file download /home/user/file.txt ./local.txt
 ```
 
+## 手机沙箱（ADB 连接）
+
+对于 **mobile（手机）** 类型的沙箱（Android），AGS CLI 提供了通过 WebSocket 隧道安全访问 ADB 的功能。这允许您使用标准的 `adb` 命令与远程 Android 沙箱实例进行交互。
+
+### 前置要求
+
+- 一个 mobile 类型的沙箱工具（如 Android 13 沙箱）
+- 本地已安装 `adb`（[Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools)）
+
+### 操作流程
+
+```bash
+# 第 1 步：创建 mobile 类型的手机沙箱实例
+ags instance create -t <mobile-tool-name>
+# ✓ Instance created: 8d7a3c17ef84******************************e73c58
+
+# 第 2 步：通过 ADB 隧道连接到手机沙箱
+ags mobile connect 8d7a3c17ef84******************************e73c58
+# connected to 127.0.0.1:61876
+# ℹ connected to 8d7a3c17ef84******************************e73c58 (127.0.0.1:61876)
+# ℹ tunnel log: /Users/<user>/.ags/tunnel-8d7a3c17ef84******************************e73c58.log
+
+# 第 3 步：查看活跃的手机沙箱连接，并确认 ADB 设备
+ags mobile list
+# SANDBOX                                   ADB ADDRESS        STATUS
+# 8d7a3c17ef84******************************e73c58  127.0.0.1:61876    connected
+adb devices
+# List of devices attached
+# 127.0.0.1:61876    device
+
+# 第 4 步：连接成功后，即可执行所有原生 adb 操作（shell、install、push、pull、screencap 等）
+adb -s 127.0.0.1:61876 shell getprop ro.build.display.id
+
+# 第 5 步：使用完毕后断开连接
+ags mobile disconnect 8d7a3c17ef84******************************e73c58
+# ℹ disconnected from 8d7a3c17ef84******************************e73c58
+
+# 或一次性断开所有活跃连接
+ags mobile disconnect --all
+```
+
+> **注意**：`ags mobile` 命令仅适用于 **mobile（手机）** 类型的沙箱实例（如 Android 沙箱），不适用于普通的代码执行沙箱。
+
 ## 命令参考
 
 各命令的详细文档：
@@ -144,7 +187,7 @@ ags file download /home/user/file.txt ./local.txt
 | `run` | `r` | 代码执行 | [ags-run](docs/ags-run-zh.md) |
 | `exec` | `x` | Shell 命令执行 | [ags-exec](docs/ags-exec-zh.md) |
 | `file` | `f`, `fs` | 文件操作 | [ags-file](docs/ags-file-zh.md) |
-| `mobile` | `m` | 移动沙箱 ADB 连接 | [ags-mobile](docs/ags-mobile-zh.md) |
+| `mobile` | `m` | 手机沙箱 ADB 连接 | [ags-mobile](docs/ags-mobile-zh.md) |
 | `apikey` | `ak`, `key` | API 密钥管理 | [ags-apikey](docs/ags-apikey-zh.md) |
 
 参见 [ags](docs/ags-zh.md) 了解全局选项和配置详情。

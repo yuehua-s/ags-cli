@@ -133,6 +133,49 @@ ags file upload local.txt /home/user/remote.txt
 ags file download /home/user/file.txt ./local.txt
 ```
 
+## Mobile Sandbox (ADB Access)
+
+For **mobile** type sandboxes (Android), AGS CLI provides secure ADB access via WebSocket tunnels. This allows you to use standard `adb` commands to interact with remote Android sandbox instances.
+
+### Prerequisites
+
+- A mobile type sandbox tool (e.g., Android 13 sandbox)
+- Local `adb` installed ([Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools))
+
+### Workflow
+
+```bash
+# Step 1: Create a mobile sandbox instance
+ags instance create -t <mobile-tool-name>
+# ✓ Instance created: 8d7a3c17ef84******************************e73c58
+
+# Step 2: Connect to the mobile sandbox via ADB tunnel
+ags mobile connect 8d7a3c17ef84******************************e73c58
+# connected to 127.0.0.1:61876
+# ℹ connected to 8d7a3c17ef84******************************e73c58 (127.0.0.1:61876)
+# ℹ tunnel log: /Users/<user>/.ags/tunnel-8d7a3c17ef84******************************e73c58.log
+
+# Step 3: List active mobile connections and verify ADB device
+ags mobile list
+# SANDBOX                                   ADB ADDRESS        STATUS
+# 8d7a3c17ef84******************************e73c58  127.0.0.1:61876    connected
+adb devices
+# List of devices attached
+# 127.0.0.1:61876    device
+
+# Step 4: Now you can use any native adb commands (shell, install, push, pull, screencap, etc.)
+adb -s 127.0.0.1:61876 shell getprop ro.build.display.id
+
+# Step 5: Disconnect when done
+ags mobile disconnect 8d7a3c17ef84******************************e73c58
+# ℹ disconnected from 8d7a3c17ef84******************************e73c58
+
+# Or disconnect all active connections at once
+ags mobile disconnect --all
+```
+
+> **Note**: The `ags mobile` commands are only applicable to **mobile** type sandbox instances (e.g., Android sandboxes). They do not apply to regular code execution sandboxes.
+
 ## Command Reference
 
 For detailed documentation on each command, see:
