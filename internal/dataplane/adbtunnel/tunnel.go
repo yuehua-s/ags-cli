@@ -36,6 +36,17 @@ const (
 	// do not count.
 	maxDialFailures = 5
 
+	// maxSessionReconnectAttempts limits reconnect retries while preserving the same
+	// local ADB TCP connection. If still failing after this threshold, we close local
+	// TCP and let adb reconnect fresh.
+	maxSessionReconnectAttempts = 3
+
+	// sessionReconnectBaseDelay is the initial reconnect delay for one ADB session.
+	sessionReconnectBaseDelay = 300 * time.Millisecond
+
+	// sessionReconnectMaxDelay caps reconnect delay for one ADB session.
+	sessionReconnectMaxDelay = 2 * time.Second
+
 	// probeTimeout is the maximum time allowed for a Probe() handshake.
 	probeTimeout = 10 * time.Second
 
@@ -318,40 +329,71 @@ func (t *Tunnel) acceptLoop() {
 }
 
 // handleConnectionWithReconnect bridges a single ADB client connection.
-// When the WebSocket drops, it always closes the local TCP connection so ADB
-// reconnects fresh via acceptLoop with a clean protocol handshake.
-// Dial failures are tracked: after maxDialFailures consecutive failures, the
-// tunnel enters degraded mode.
+// It tries a bounded in-session WS reconnect while keeping local TCP open,
+// reducing user-visible drops on transient network hiccups.
 func (t *Tunnel) handleConnectionWithReconnect(localConn net.Conn) {
 	defer func() { _ = localConn.Close() }()
 
-	connStart := time.Now()
-	preempted, err := t.handleConnection(localConn)
-	if err == nil {
-		// Normal close (context cancelled or clean shutdown)
-		return
-	}
-
-	// If preempted by server (close code 4001), do NOT reconnect
-	if preempted {
-		t.logger.Printf("[WARN] Connection preempted by new client. Not reconnecting.")
-		return
-	}
-
-	// Track consecutive dial failures (connection never established).
-	// A dial failure means the error occurred instantly (< 1s), indicating
-	// the server rejected us (bad handshake, sandbox deleted, token invalid).
-	if time.Since(connStart) < time.Second {
-		if t.trackDialFailure() {
-			return // Entered degraded mode
+	reconnectAttempt := 0
+	for {
+		connStart := time.Now()
+		preempted, err := t.handleConnection(localConn)
+		if err == nil {
+			// Normal close (context cancelled or local TCP disconnected)
+			return
 		}
-	} else {
-		t.resetDialFailures()
-	}
 
-	// Always close local TCP on WS drop. ADB will reconnect fresh via acceptLoop
-	// with a new protocol handshake, avoiding stale state after network disruption.
-	t.logger.Printf("[INFO] WebSocket lost: %v. Closing local TCP for fresh ADB reconnect.", err)
+		// If preempted by server (close code 4001), do NOT reconnect
+		if preempted {
+			t.logger.Printf("[WARN] Connection preempted by new client. Not reconnecting.")
+			return
+		}
+
+		// Track consecutive dial failures only for immediate handshake/auth failures.
+		if shouldTrackDialFailure(err, time.Since(connStart)) {
+			if t.trackDialFailure() {
+				return // Entered degraded mode
+			}
+		} else {
+			t.resetDialFailures()
+		}
+
+		reconnectAttempt++
+		if reconnectAttempt > maxSessionReconnectAttempts {
+			t.logger.Printf("[INFO] WebSocket lost after %d reconnect attempts: %v. Closing local TCP for fresh ADB reconnect.", maxSessionReconnectAttempts, err)
+			return
+		}
+
+		delay := sessionReconnectDelay(reconnectAttempt)
+		t.logger.Printf("[INFO] WebSocket lost: %v. Retrying WS in %v (attempt %d/%d) while keeping local TCP open.",
+			err,
+			delay,
+			reconnectAttempt,
+			maxSessionReconnectAttempts,
+		)
+
+		select {
+		case <-t.ctx.Done():
+			return
+		case <-time.After(delay):
+		}
+	}
+}
+
+func shouldTrackDialFailure(err error, elapsed time.Duration) bool {
+	if err == nil || elapsed >= time.Second {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "WebSocket dial failed") || strings.Contains(msg, "token provider failed")
+}
+
+func sessionReconnectDelay(attempt int) time.Duration {
+	delay := time.Duration(math.Min(
+		float64(sessionReconnectBaseDelay)*math.Pow(2, float64(attempt-1)),
+		float64(sessionReconnectMaxDelay),
+	))
+	return delay
 }
 
 // startRecoveryProbe launches a background goroutine that periodically probes
@@ -447,13 +489,18 @@ func (t *Tunnel) handleConnection(localConn net.Conn) (preempted bool, err error
 	pingTicker := time.NewTicker(pingInterval)
 	defer pingTicker.Stop()
 
+	_ = wsConn.SetReadDeadline(time.Now().Add(readTimeout))
 	wsConn.SetPongHandler(func(appData string) error {
 		_ = wsConn.SetReadDeadline(time.Now().Add(readTimeout))
 		return nil
 	})
 
-	doneRead := make(chan struct{})
-	doneWrite := make(chan error, 1) // buffered to capture close error
+	type bridgeResult struct {
+		localClosed bool
+		err         error
+	}
+
+	resultCh := make(chan bridgeResult, 2)
 
 	var transferWg sync.WaitGroup
 	transferWg.Add(2)
@@ -461,14 +508,18 @@ func (t *Tunnel) handleConnection(localConn net.Conn) (preempted bool, err error
 	// Local TCP -> WS Write
 	go func() {
 		defer transferWg.Done()
-		defer close(doneRead)
 		buf := make([]byte, 32*1024)
 		for {
 			n, readErr := localConn.Read(buf)
 			if readErr != nil {
-				if readErr != io.EOF && !strings.Contains(readErr.Error(), "use of closed network connection") {
+				isLocalClose := readErr == io.EOF ||
+					strings.Contains(readErr.Error(), "use of closed network connection") ||
+					strings.Contains(readErr.Error(), "connection reset by peer")
+				isTimeout := strings.Contains(readErr.Error(), "i/o timeout")
+				if !isLocalClose && !isTimeout {
 					t.logger.Printf("Local read error: %v", readErr)
 				}
+				resultCh <- bridgeResult{localClosed: isLocalClose, err: readErr}
 				return
 			}
 			wsMu.Lock()
@@ -476,6 +527,7 @@ func (t *Tunnel) handleConnection(localConn net.Conn) (preempted bool, err error
 			wsMu.Unlock()
 			if writeErr != nil {
 				t.logger.Printf("WebSocket write error: %v", writeErr)
+				resultCh <- bridgeResult{localClosed: false, err: writeErr}
 				return
 			}
 		}
@@ -484,70 +536,58 @@ func (t *Tunnel) handleConnection(localConn net.Conn) (preempted bool, err error
 	// WS Read -> Local TCP
 	go func() {
 		defer transferWg.Done()
-		defer close(doneWrite)
-		_ = wsConn.SetReadDeadline(time.Now().Add(readTimeout))
-		var lastErr error
 		for {
 			msgType, reader, readErr := wsConn.NextReader()
 			if readErr != nil {
-				if !websocket.IsUnexpectedCloseError(readErr, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
-					lastErr = nil // expected close
-				} else {
-					lastErr = readErr
+				if websocket.IsUnexpectedCloseError(readErr, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
+					t.logger.Printf("WebSocket read error: %v", readErr)
 				}
-				doneWrite <- lastErr
+				resultCh <- bridgeResult{localClosed: false, err: readErr}
 				return
 			}
 
 			// ReadDeadline renewal is handled exclusively by PongHandler.
 			// Do NOT renew on data frames — this ensures we detect Pong loss
-			// even when the server keeps sending data (prevents "half-dead"
-			// connections from staying alive indefinitely).
-
+			// even when the server keeps sending data.
 			if msgType == websocket.BinaryMessage || msgType == websocket.TextMessage {
 				if _, copyErr := io.Copy(localConn, reader); copyErr != nil {
 					t.logger.Printf("Local write error: %v", copyErr)
-					doneWrite <- copyErr
+					resultCh <- bridgeResult{localClosed: false, err: copyErr}
 					return
 				}
 			}
 		}
 	}()
 
-	// Orchestrator: Watch for completion or context cancellation.
-	// Close connections first to unblock goroutines, then wait for them to finish.
-	var wsCloseErr error
-	defer func() {
+	drainGoroutines := func() {
 		_ = wsConn.Close()
-		// Do NOT close localConn here — it's managed by handleConnectionWithReconnect
+		// Unblock localConn.Read quickly, then clear deadline for the next reconnect attempt.
+		_ = localConn.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
 		transferWg.Wait()
-	}()
+		_ = localConn.SetReadDeadline(time.Time{})
+	}
 
 	lastPingAt := time.Now()
 	for {
 		select {
 		case <-t.ctx.Done():
-			// Send clean close frame before exit
-			wsMu.Lock()
 			_ = wsConn.WriteControl(
 				websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.CloseNormalClosure, "shutdown"),
 				time.Now().Add(3*time.Second),
 			)
-			wsMu.Unlock()
+			drainGoroutines()
 			return false, nil
-		case <-doneRead:
-			// Local TCP closed (adb client disconnected) — normal, no reconnect
-			return false, nil
-		case wsCloseErr = <-doneWrite:
-			// WebSocket read goroutine exited — check if preempted
-			if isPreemptionError(wsCloseErr) {
-				return true, wsCloseErr
+		case result := <-resultCh:
+			drainGoroutines()
+			if result.localClosed {
+				// Local TCP closed by adb client — normal end of session.
+				return false, nil
 			}
-			if wsCloseErr != nil {
-				return false, wsCloseErr
+			if isPreemptionError(result.err) {
+				return true, result.err
 			}
-			return false, nil
+			return false, result.err
 		case <-pingTicker.C:
 			// Detect system sleep/wake: if time since last ping is much larger than
 			// the expected interval, the system likely slept. The underlying TCP/TLS
@@ -555,14 +595,15 @@ func (t *Tunnel) handleConnection(localConn net.Conn) (preempted bool, err error
 			elapsed := time.Since(lastPingAt)
 			if elapsed > pingInterval*3 {
 				t.logger.Printf("[WARN] Clock jump detected (%v since last ping, expected ~%v). Forcing reconnect.", elapsed.Round(time.Second), pingInterval)
+				drainGoroutines()
 				return false, fmt.Errorf("clock jump detected (system sleep): %v since last ping", elapsed.Round(time.Second))
 			}
 			lastPingAt = time.Now()
-			wsMu.Lock()
+			// WriteControl is concurrency-safe with data writes.
 			pingErr := wsConn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(10*time.Second))
-			wsMu.Unlock()
 			if pingErr != nil {
 				t.logger.Printf("[WARN] Ping write failed: %v", pingErr)
+				drainGoroutines()
 				return false, fmt.Errorf("ping write failed: %w", pingErr)
 			}
 		}

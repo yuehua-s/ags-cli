@@ -28,6 +28,9 @@ const (
 	CacheFile = "tokens.json"
 	// CacheVersion is the current version of cache file format
 	CacheVersion = 1
+	// defaultTokenTTL is the fallback token lifetime when explicit expiry
+	// is unavailable from control plane response.
+	defaultTokenTTL = 24 * time.Hour
 	// lockTimeout is the maximum wait time to acquire the file lock.
 	lockTimeout = 3 * time.Second
 	// lockRetryDelay is the interval between lock acquisition attempts.
@@ -38,6 +41,7 @@ const (
 type TokenEntry struct {
 	AccessToken string    `json:"access_token"`
 	CreatedAt   time.Time `json:"created_at"`
+	ExpiresAt   time.Time `json:"expires_at,omitempty"`
 }
 
 // CacheData represents the structure of the cache file
@@ -166,6 +170,19 @@ func (c *Cache) saveLocked(cache *CacheData) error {
 	return nil
 }
 
+func isTokenEntryExpired(entry *TokenEntry, now time.Time) bool {
+	if entry == nil || entry.AccessToken == "" {
+		return true
+	}
+	if !entry.ExpiresAt.IsZero() {
+		return now.After(entry.ExpiresAt)
+	}
+	if entry.CreatedAt.IsZero() {
+		return true
+	}
+	return now.After(entry.CreatedAt.Add(defaultTokenTTL))
+}
+
 // Get retrieves the access token for an instance.
 // Returns the token and true if found, empty string and false otherwise.
 func (c *Cache) Get(instanceID string) (string, bool) {
@@ -178,6 +195,11 @@ func (c *Cache) Get(instanceID string) (string, bool) {
 		}
 		entry, ok := cache.Tokens[instanceID]
 		if ok && entry != nil {
+			now := time.Now()
+			if isTokenEntryExpired(entry, now) {
+				delete(cache.Tokens, instanceID)
+				return c.saveLocked(cache)
+			}
 			token = entry.AccessToken
 			found = true
 		}
@@ -186,19 +208,26 @@ func (c *Cache) Get(instanceID string) (string, bool) {
 	return token, found
 }
 
-// Set stores the access token for an instance.
-func (c *Cache) Set(instanceID, accessToken string) error {
+// SetWithExpiry stores the access token for an instance with explicit expiry.
+func (c *Cache) SetWithExpiry(instanceID, accessToken string, expiresAt time.Time) error {
 	return c.withLock(func() error {
 		cache, err := c.loadLocked()
 		if err != nil {
 			return err
 		}
+		now := time.Now()
 		cache.Tokens[instanceID] = &TokenEntry{
 			AccessToken: accessToken,
-			CreatedAt:   time.Now(),
+			CreatedAt:   now,
+			ExpiresAt:   expiresAt,
 		}
 		return c.saveLocked(cache)
 	})
+}
+
+// Set stores the access token for an instance.
+func (c *Cache) Set(instanceID, accessToken string) error {
+	return c.SetWithExpiry(instanceID, accessToken, time.Now().Add(defaultTokenTTL))
 }
 
 // Delete removes the access token for an instance.
